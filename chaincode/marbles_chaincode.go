@@ -15,14 +15,18 @@ type SimpleChaincode struct {
 }
 
 				
-/*
-type Product  struct{
-	Brand string `json:"brand"`					//Lee, Levis etc
+
+type Lee  struct{
+	
 	Color string `json:"color"`                                     // blue, brown etc
 	Size int `json:"size"`                                          // waist size 32,34 etc
-	User string `json:"user"`                                       // Supplier, retailer, customer
 }
 
+type currency struct{
+supplycoin float32
+}
+
+/*
 type Description struct{
 	Color string `json:"color"`
 	Size int `json:"size"`
@@ -34,9 +38,8 @@ type Description struct{
 type assets struct{
 	 User string `json:"user"`  
          Quantity int  `json:"quantity"`
-	 Balance float32 `json:"balance"`             
+	 typeofasset  string
 }
-
 
 
 /*
@@ -102,18 +105,18 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 }
 
 func (t *SimpleChaincode) create_asset(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	if args == "supplier"{
+	if args[0] == "supplier"{
 		supplierasset := asset{}
-		supplierasset.User = "Supplier" 
-		supplierasset.Quantity = 100
-		supplierasset.Balance = 10000
+		supplierasset.User = args[0] 
+		supplierasset.Quantity = args[1]
+		supplierasset.typeofassset = args[2]
 		b,err = json.Marshal(supplierasset)
 		err = stub.PutState(supplierasset.User,b)
-	} else if args == "retailer"{
+	} else if args[0] == "retailer"{
 		retailerasset := asset{}
-		retailerasset.User = "retailer"
-		retailerasset.Quantity = 10
-		retailerasset.Balance = 100000
+		retailerasset.User = args[0]
+		retailerasset.Quantity = args[1]
+		retailerasset.typeofasset = args[2]
 		b,err = json.Marshal(retailerasset)
 		err = stub.PutState(retailerasset.User,b)
         }
