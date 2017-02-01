@@ -8,6 +8,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"strings"
 	"time"
+	"strconv"
 )
 
 // SimpleChaincode example simple Chaincode implementation
@@ -38,7 +39,7 @@ type Description struct{
 type assets struct{
 	 User string `json:"user"`  
          Quantity int  `json:"quantity"`
-	 typeofasset  string
+	 Typeofasset  string `json:"typeofasset"`
 }
 
 
@@ -54,6 +55,8 @@ type AllOrders struct{
 	Openorders []Order `json:"openorders"`
 }
 */
+
+
 // ============================================================================================================================
 // Main
 // ============================================================================================================================
@@ -106,20 +109,28 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 
 func (t *SimpleChaincode) create_asset(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if args[0] == "supplier"{
-		supplierasset := asset{}
-		supplierasset.User = args[0] 
-		supplierasset.Quantity = args[1]
-		supplierasset.typeofassset = args[2]
-		b,err = json.Marshal(supplierasset)
+		supplierasset := &assets{User:"sarat",Quantity:args[1],Typeofasset:args[2]}
+		if err != nil {
+		return nil, errors.New("Failed to get marble index")
+                }
+		assetasbytes := stub.GetState(args[0])
+		var c []assets
+		json.Unmarshal(assetasbytes, &c)
+		c=append(c,supplierasset)
+		b,err = json.Marshal(c)
 		err = stub.PutState(supplierasset.User,b)
+		return nil, nil
 	} else if args[0] == "retailer"{
-		retailerasset := asset{}
-		retailerasset.User = args[0]
-		retailerasset.Quantity = args[1]
-		retailerasset.typeofasset = args[2]
-		b,err = json.Marshal(retailerasset)
+		retailerasset := &assets{User:"ram",Quantity:args[1],Typeofasset:args[2]}
+		assetasbytes := stub.GetState(args[0])
+		var c []assets
+		json.Unmarshal(assetasbytes, &c)
+		c = append(c,retailerasset)
+		b,err = json.Marshal(c)
 		err = stub.PutState(retailerasset.User,b)
+		return nil, nil
         }
+	return nil, nil
 }	
 	
 // ============================================================================================================================
