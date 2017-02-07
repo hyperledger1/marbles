@@ -1,65 +1,77 @@
-/* SUPPLY CHAIN MANAGEMENT - RETAIL SECTOR*/
-package main
+/* SUPPLY CHAIN MANAGEMENT on top of Hyperledger*/
 
+package main  
+
+
+//importing the packages for using inbuilt functions
 import (
 	"errors"
+        "bufio"
+        "os"
 	"fmt"
-	"encoding/json"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"strings"
-	"time"
 	"strconv"
+	"encoding/json"
+	"time"
+	"strings"
+        "github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
-// SimpleChaincode example simple Chaincode implementation
-type SimpleChaincode struct {
+// Dont know why this has to be used..as of now
+type SimpleChaincode struct {            
 }
 
-				
+//In final phase each product will have a ID. That ID will be used as a key and this entire struct will be kept as value corresponding to that key.IF IOT is integrated
+//may be by scanning bar code we can generate ID through that why also
+// If the product is with supplier(As is the case initally when product is manufactured, user will be "Supplier"
+//Say 10 pants are der initially(User is Supplier), market gives order for 5 pants. For 5 pants user will be set to market and for remaining 5 pants user will
+//be as it is (Supplier).
 
-type Lee  struct{
-	
-	Color string `json:"color"`                                     // blue, brown etc
-	Size int `json:"size"`                                          // waist size 32,34 etc
+type Product struct{
+	Id string `json:"id"`					
+	Color string `json:"color"`
+	Size int `json:"size"`
+                                                        // Brand string `json:"brand"` ,For now we can relax this
+	User string `json:"user"`
+           
+}
+
+// to facilitate order 
+type Description struct{
+	Color string `json:"color"`
+	Size int `json:"size"`
+       // Later on we should keep Brand also
+}
+
+type AnOpenOrder struct{
+	Orderid string `json:"orderid"`		                 // just like practical scenario, each order placed by market will have a order ID
+ 	                                                        //Timestamp int64 `json:"timestamp"`			
+        Want Description  `json:"want"`				//description of desired pant i.e color,size,brand etc
+        Status string `json:"status"`                           // Not yet shipped, in transit, Delivered, Some items are delivered etc can be status
+        Quantity int  `json:"quantity"`                         //Self explanatory
 }
 
 type currency struct{
 supplycoin float32
 }
 
-/*
-type Description struct{
-	Color string `json:"color"`
-	Size int `json:"size"`
-	Brand string `json:"brand"`
-}
-
-*/
-
-type assets struct{
-	 User string `json:"user"`  
-         Quantity int  `json:"quantity"`
-	 Typeofasset  string `json:"typeofasset"`
-}
-
-
-/*
-type Order struct{
-	OrderID string `json:"orderid"`				// A sequnce of numbers and alphabets- this will be the transaction has obtained when init-order is invoked by r retailer 
-	Timestamp int64 `json:"timestamp"`			//utc timestamp of creation
-	prod Description  `json:"prod"`				//description of desired product 
-	Quantity_order int `json:"quantity_order"`	                       // Quantity of product needed
-}
-
 type AllOrders struct{
-	Openorders []Order `json:"openorders"`
+	OpenOrders []AnOpenOrder `json:"open_orders"`           // list of all orders 
 }
-*/
+
+
+type Assets struct{
+   User string `json:"user"`                                   // Supplier or retailer
+   Prod Description   `json:"prod"`                            // the attributes of the product the entity has can be set here(for phase 1)     
+   Productquantity  int  `json:"productquantity"`              // the number of products the entity has
+   Coinbalance currency `json:"coinbalance"`                   //The amount of coins the asset holds, analogous to bank balance
+} 
+
 
 
 // ============================================================================================================================
 // Main
 // ============================================================================================================================
+
 func main() {
 	err := shim.Start(new(SimpleChaincode))
 	if err != nil {
@@ -67,12 +79,17 @@ func main() {
 	}
 }
 
+
 // ============================================================================================================================
 // Init - reset all the things
 // ============================================================================================================================
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string) ([]byte, error) {
 
-	if len(args) != 1 {
+
+
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+
+
+if len(args) != 1 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 1")
 	}
 
@@ -82,60 +99,100 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 
 return nil, nil
+
 }
+// ============================================================================================================================
+// Invoke - Our entry point for all invocations
+// ============================================================================================================================
 
 
-// ============================================================================================================================
-// Invoke - Our entry point for Invocations
-// ============================================================================================================================
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Println("invoke is running " + function)
+fmt.Println("invoke has started working on " + function)
 
-	// Handle different functions
-	if function == "init" {													//initialize the chaincode state, used as reset
+if function == "init" {											
 		return t.Init(stub, "init", args)
 	}else if function == "create_asset"{
-		return t.create_asset(stub,args)
+		return t.create_asset(stub)
 	}
-	
-	else if function == "query" {											//writes a value to the chaincode state
+        else if function == "write" {								       //writes a value to the ledger(leveraged using Putstate)
+		return t.Write(stub, args)
+	}
+        else if function == "init_order" {							      //market to place an order to supplier
+		return t.init_order(stub, args)
+	}
+        else if function == "init_logistics" {							     //supplier to trigger logistics 
+		return t.init_logistics(stub, args)
+	}
+        else if function == "query" {								     //query for data from ledger(leveraged using Getstate)
 		return t.query(stub,args)
 	} 
-	
-	fmt.Println("invoke did not find func: " + function)					//error
+        else if function == "sendcoins" {							     //for transfer of money between parties
+		return t.sendcoins(stub,args)
+	} 
 
-	return nil, errors.New("Received unknown function invocation")
+// Since this is a smart contract, Once order is placed and advance is paid, automatically logistics is triggered--->Deliver....>Check and pay to supplier by market
+// ....> pay to logistics by supplier
+//So market will place an order, so how should logistics guy be called from a seperate function(Smart Contract is compromised here) or  from sma
 }
 
-func (t *SimpleChaincode) create_asset(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	if args[0] == "supplier"{
-		supplierasset := &assets{User:"sarat",Quantity:args[1],Typeofasset:args[2]}
-		if err != nil {
-		return nil, errors.New("Failed to get marble index")
-                }
-		assetasbytes := stub.GetState(args[0])
-		var c []assets
-		json.Unmarshal(assetasbytes, &c)
-		c=append(c,supplierasset)
-		b,err = json.Marshal(c)
-		err = stub.PutState(supplierasset.User,b)
-		return nil, nil
-	} else if args[0] == "retailer"{
-		retailerasset := &assets{User:"ram",Quantity:args[1],Typeofasset:args[2]}
-		assetasbytes := stub.GetState(args[0])
-		var c []assets
-		json.Unmarshal(assetasbytes, &c)
-		c = append(c,retailerasset)
-		b,err = json.Marshal(c)
-		err = stub.PutState(retailerasset.User,b)
-		return nil, nil
-        }
-	return nil, nil
-}	
-	
-// ============================================================================================================================
-// Query - Our entry point for Queries
-// ============================================================================================================================
+
+func (t *SimpleChaincode) create_asset(stub shim.ChaincodeStubInterface) ([]byte, error) {
+fmt.Println("Let's create asset, This asset creation will be done only once")
+
+    
+
+
+    
+                         Supplierassets := &Assets{User:Supplier,Prod.Color:"blue",Prod.Size:32,productquantity:100,coinbalance.supplycoins:1000}
+                         supplierassetinbytes = json.Marshal(Supplierassets)           // Convering to Json format i.e bytes
+
+                         err= stub.PutState("Supplierassets", supplierassetinbytes)   // Writing to ledger with the shown key and entire struct as value
+   
+                           if err != nil {
+                                          fmt.Printf("Error: %s", err)
+                                          return;
+                           }
+
+                        fmt.Println(string(supplierassetinbytes))                 // Printing the Contents
+
+                       
+   
+  
+
+                        Marketassets := &Assets{User:Market,Prod.Color:"blue",Prod.Size:32,productquantity:20,coinbalance.supplycoins:1000}
+                        marketassetinbytes = json.Marshal(Marketassets)           // Convering to Json format i.e bytes
+
+                        err= stub.PutState("Marketassets", marketassetinbytes)   // Writing to ledger with the shown key and entire struct as value
+   
+                          if err != nil {
+                                         fmt.Printf("Error: %s", err)
+                                         return;
+                          }
+
+                        fmt.Println(string(marketassetinbytes))                 // Printing the Contents
+
+
+                      
+                       Logisticsassets:= &Assets{User:Logistics,Prod.Color:nil, Prod.Size:nil,productquantity:nil,coinbalance.supplycoins:100}
+                       logisticsassetinbytes = json.Marshal(Logisticsassets)           // Convering to Json format i.e bytes
+
+                        err= stub.PutState("Logisticsassets", logisticsassetinbytes)   // Writing to ledger with the shown key and entire struct as value
+   
+                          if err != nil {
+                                         fmt.Printf("Error: %s", err)
+                                         return;
+                          }
+
+                        fmt.Println(string(logisticsassetinbytes))                 // Printing the Contents
+
+     return nil, nil
+
+
+}
+
+
+
+
 func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Println("query is running " + function)
 	
@@ -149,15 +206,13 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 	return nil, errors.New("Received unknown function query")
 }
 
-// ============================================================================================================================
-// Read - read a variable from chaincode state
-// ============================================================================================================================
+
 func (t *SimpleChaincode) read(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var name, jsonResp string
 	var err error
 
 	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting name of the var to query")
+		return nil, errors.New("Incorrect number of arguments. Expecting name of the variable to query")
 	}
 
 	name = args[0]
@@ -167,8 +222,9 @@ func (t *SimpleChaincode) read(stub shim.ChaincodeStubInterface, args []string) 
 		return nil, errors.New(jsonResp)
 	}
 
-	return valAsbytes, nil													//send it onward
+	return valAsbytes, nil										       //send it onward
 }
+
 
 
 
