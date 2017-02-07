@@ -143,7 +143,7 @@ fmt.Println("Let's create asset, This asset creation will be done only once")
 
 
     
-                         Supplierassets := &Assets{User:Supplier,Prod.Color:"blue",Prod.Size:32,productquantity:100,coinbalance.supplycoins:1000}
+                         Supplierassets := &Assets{User:Supplier,Prod.Color:"blue",Prod.Size:32,productquantity:100,Coinbalance.supplycoins:1000}
                          supplierassetinbytes = json.Marshal(Supplierassets)           // Convering to Json format i.e bytes
 
                          err= stub.PutState("Supplierassets", supplierassetinbytes)   // Writing to ledger with the shown key and entire struct as value
@@ -159,7 +159,7 @@ fmt.Println("Let's create asset, This asset creation will be done only once")
    
   
 
-                        Marketassets := &Assets{User:Market,Prod.Color:"blue",Prod.Size:32,productquantity:20,coinbalance.supplycoins:1000}
+                        Marketassets := &Assets{User:Market,Prod.Color:"blue",Prod.Size:32,productquantity:20,Coinbalance.supplycoins:1000}
                         marketassetinbytes = json.Marshal(Marketassets)           // Convering to Json format i.e bytes
 
                         err= stub.PutState("Marketassets", marketassetinbytes)   // Writing to ledger with the shown key and entire struct as value
@@ -173,7 +173,7 @@ fmt.Println("Let's create asset, This asset creation will be done only once")
 
 
                       
-                       Logisticsassets:= &Assets{User:Logistics,Prod.Color:nil, Prod.Size:nil,productquantity:nil,coinbalance.supplycoins:100}
+                       Logisticsassets:= &Assets{User:Logistics,Prod.Color:nil, Prod.Size:nil,productquantity:nil,Coinbalance.supplycoins:100}
                        logisticsassetinbytes = json.Marshal(Logisticsassets)           // Convering to Json format i.e bytes
 
                         err= stub.PutState("Logisticsassets", logisticsassetinbytes)   // Writing to ledger with the shown key and entire struct as value
